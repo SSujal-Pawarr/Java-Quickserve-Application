@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickServe - Book Service</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>⚡ QuickServe</h1>
+    <p>Book a Service</p>
+    <nav>
+      <a href="user_dashboard.html">Home</a>
+      <a href="user_browse_services.html">Services</a>
+      <a href="user_bookings.html">My Bookings</a>
+      <a href="user_profile.html">Profile</a>
+      <a href="#" id="logoutBtn">🚪 Logout</a>
+    </nav>
+  </header>
+
+  <main class="auth-container">
+    <form id="bookingForm">
+      <h2>Book Your Service</h2>
+      
+      <label>Service Type</label>
+      <select id="serviceType" required>
+        <option value="">-- Select Service --</option>
+        <option value="Electrician">⚡ Electrician</option>
+        <option value="Plumber">🚰 Plumber</option>
+        <option value="Cleaner">🧹 Cleaner</option>
+        <option value="Painter">🎨 Painter</option>
+        <option value="Carpenter">🪚 Carpenter</option>
+        <option value="AC Repair">❄️ AC Repair</option>
+      </select>
+
+      <label>Your Name</label>
+      <input type="text" id="customerName" placeholder="Enter your name" required />
+
+      <label>Phone Number</label>
+      <input type="tel" id="phone" placeholder="e.g., 9876543210" required pattern="[0-9]{10}" />
+
+      <label>Address</label>
+      <textarea id="address" placeholder="Enter your complete address" required rows="3"></textarea>
+
+      <label>Preferred Date</label>
+      <input type="date" id="date" required />
+
+      <label>Preferred Time Slot</label>
+      <select id="timeSlot" required>
+        <option value="">-- Select Time --</option>
+        <option value="09:00 AM - 11:00 AM">09:00 AM - 11:00 AM</option>
+        <option value="11:00 AM - 01:00 PM">11:00 AM - 01:00 PM</option>
+        <option value="02:00 PM - 04:00 PM">02:00 PM - 04:00 PM</option>
+        <option value="04:00 PM - 06:00 PM">04:00 PM - 06:00 PM</option>
+      </select>
+
+      <label>Additional Notes (Optional)</label>
+      <textarea id="notes" placeholder="Any specific requirements..." rows="2"></textarea>
+
+      <button type="submit" class="btn-primary">Confirm Booking</button>
+      <button type="button" class="btn-secondary" onclick="location.href='user_dashboard.html'">Cancel</button>
+    </form>
+  </main>
+
+  <footer>
+    <p>© 2025 QuickServe. All rights reserved.</p>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/storage.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = getLoggedInUser();
+      if (!user || user.role !== 'user') {
+        window.location.href = 'user_login.html';
+        return;
+      }
+
+      // Pre-fill service if coming from service card
+      const urlParams = new URLSearchParams(window.location.search);
+      const service = urlParams.get('service');
+      if (service) {
+        document.getElementById('serviceType').value = service;
+      }
+
+      // Pre-fill user details from backend
+      try {
+        const userDetails = await apiGet(`${API_CONFIG.ENDPOINTS.USERS}/${user.email}`);
+        if (userDetails) {
+          document.getElementById('customerName').value = userDetails.name || '';
+          document.getElementById('phone').value = userDetails.phone || '';
+          document.getElementById('address').value = userDetails.address || '';
+        }
+      } catch (error) {
+        console.error('Error loading user details:', error);
+      }
+
+      // Set minimum date to today
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('date').setAttribute('min', today);
+
+      // Setup logout
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          if (confirm('Are you sure you want to logout?')) {
+            logoutUser();
+          }
+        });
+      }
+
+      // Handle booking form submission
+      document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const bookingData = {
+          service: document.getElementById('serviceType').value,
+          customerName: document.getElementById('customerName').value.trim(),
+          customerEmail: user.email,
+          phone: document.getElementById('phone').value.trim(),
+          address: document.getElementById('address').value.trim(),
+          date: document.getElementById('date').value,
+          timeSlot: document.getElementById('timeSlot').value,
+          notes: document.getElementById('notes').value.trim()
+        };
+
+        console.log('Submitting booking:', bookingData);
+
+        try {
+          const response = await apiPost(API_CONFIG.ENDPOINTS.BOOKINGS, bookingData);
+          
+          console.log('Booking response:', response);
+          
+          if (response.status === 'success') {
+            alert(`✅ Booking Confirmed for ${bookingData.service}!`);
+            window.location.href = 'user_bookings.html';
+          } else {
+            alert('❌ Booking failed: ' + (response.message || 'Unknown error'));
+          }
+        } catch (error) {
+          console.error('Booking error:', error);
+          alert('❌ Error creating booking. Please check console for details.');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
