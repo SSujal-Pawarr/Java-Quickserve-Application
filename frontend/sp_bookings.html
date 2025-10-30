@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickServe - My Bookings</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>⚡ QuickServe</h1>
+    <p>My Bookings</p>
+    <nav>
+      <a href="sp_dashboard.html">Home</a>
+      <a href="sp_bookings.html">Bookings</a>
+      <a href="sp_availability.html">Availability</a>
+      <a href="sp_profile.html">Profile</a>
+      <a href="#" id="logoutBtn">🚪 Logout</a>
+    </nav>
+  </header>
+
+  <main class="dashboard">
+    <h2>Service Bookings</h2>
+    
+    <div class="filter-buttons">
+      <button class="filter-btn active" onclick="filterBookings('all')">All</button>
+      <button class="filter-btn" onclick="filterBookings('Pending')">Pending</button>
+      <button class="filter-btn" onclick="filterBookings('Accepted')">Accepted</button>
+      <button class="filter-btn" onclick="filterBookings('Completed')">Completed</button>
+      <button class="filter-btn" onclick="filterBookings('Rejected')">Rejected</button>
+    </div>
+
+    <div id="bookingsList" class="booking-list">
+      <p>Loading bookings...</p>
+    </div>
+  </main>
+
+  <footer>
+    <p>© 2025 QuickServe. All rights reserved.</p>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/storage.js"></script>
+  <script>
+    let currentFilter = 'all';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = getLoggedInUser();
+      if (!user || user.role !== 'sp') {
+        window.location.href = 'sp_login.html';
+        return;
+      }
+
+      await loadProviderBookings();
+      setupLogout();
+    });
+
+    function filterBookings(status) {
+      currentFilter = status;
+      
+      // Update active button
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      
+      loadProviderBookings();
+    }
+
+    async function loadProviderBookings() {
+      const user = getLoggedInUser();
+      const container = document.getElementById('bookingsList');
+      
+      try {
+        console.log('Fetching provider details...');
+        const provider = await apiGet(`${API_CONFIG.ENDPOINTS.PROVIDERS}/${user.email}`);
+        
+        if (!provider) {
+          container.innerHTML = '<p>❌ Error loading provider details.</p>';
+          return;
+        }
+
+        console.log('Provider:', provider);
+        console.log('Service Type:', provider.serviceType);
+        console.log('Fetching bookings for service:', provider.serviceType);
+        
+        let bookings = await apiGet(`${API_CONFIG.ENDPOINTS.BOOKINGS}/service/${provider.serviceType}`);
+        
+        console.log('All bookings:', bookings);
+        
+        if (!bookings) {
+          bookings = [];
+        }
+        
+        // Apply filter
+        if (currentFilter !== 'all') {
+          bookings = bookings.filter(b => b.status === currentFilter);
+          console.log(`Filtered bookings (${currentFilter}):`, bookings);
+        }
+        
+        if (bookings.length === 0) {
+          container.innerHTML = '<p>No bookings found.</p>';
+          return;
+        }
+
+        container.innerHTML = bookings.map(booking => `
+          <div class="booking-card">
+            <h3>${booking.service}</h3>
+            <p><strong>Customer:</strong> ${booking.customerName}</p>
+            <p><strong>Phone:</strong> ${booking.phone}</p>
+            <p><strong>Address:</strong> ${booking.address}</p>
+            <p><strong>Date:</strong> ${booking.date}</p>
+            <p><strong>Time:</strong> ${booking.timeSlot}</p>
+            ${booking.notes ? `<p><strong>Notes:</strong> ${booking.notes}</p>` : ''}
+            <p><strong>Status:</strong> <span class="status-${booking.status.toLowerCase()}">${booking.status}</span></p>
+            <p><small>Booked: ${booking.bookedAt}</small></p>
+            
+            ${booking.status === 'Pending' ? `
+              <div class="button-group-inline">
+                <button class="btn-primary" onclick="updateBookingStatus(${booking.id}, 'Accepted')">Accept</button>
+                <button class="btn-danger" onclick="updateBookingStatus(${booking.id}, 'Rejected')">Reject</button>
+              </div>
+            ` : ''}
+            
+            ${booking.status === 'Accepted' ? `
+              <button class="btn-success" onclick="updateBookingStatus(${booking.id}, 'Completed')">Mark as Completed</button>
+            ` : ''}
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Error loading bookings:', error);
+        container.innerHTML = '<p>❌ Error loading bookings. Please check console.</p>';
+      }
+    }
+
+    async function updateBookingStatus(bookingId, newStatus) {
+      console.log('=== UPDATE BOOKING STATUS ===');
+      console.log('Booking ID:', bookingId);
+      console.log('New Status:', newStatus);
+      
+      if (!confirm(`Are you sure you want to mark this booking as ${newStatus}?`)) {
+        console.log('Update cancelled by user');
+        return;
+      }
+
+      try {
+        const url = `${API_CONFIG.BASE_URL}/bookings/${bookingId}/status`;
+        console.log('Update URL:', url);
+        
+        const requestBody = { status: newStatus };
+        console.log('Request body:', requestBody);
+        
+        const response = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Response data:', data);
+        
+        if (data.status === 'success') {
+          alert(`✅ Booking ${newStatus.toLowerCase()} successfully!`);
+          await loadProviderBookings();
+        } else {
+          alert('❌ ' + (data.message || 'Update failed'));
+        }
+      } catch (error) {
+        console.error('=== UPDATE ERROR ===');
+        console.error('Error type:', error.name);
+        console.error('Error message:', error.message);
+        console.error('Full error:', error);
+        alert('❌ Error: ' + error.message + '\nCheck console for details.');
+      }
+    }
+
+    function setupLogout() {
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          if (confirm('Are you sure you want to logout?')) {
+            logoutUser();
+          }
+        });
+      }
+    }
+  </script>
+</body>
+</html>

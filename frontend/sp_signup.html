@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickServe - Service Provider Signup</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>⚡ QuickServe</h1>
+    <p>Service Provider Registration</p>
+  </header>
+
+  <main class="auth-container">
+    <form id="spSignupForm">
+      <h2>Create Provider Account</h2>
+      
+      <label>Full Name</label>
+      <input type="text" id="spName" placeholder="Enter your name" required />
+      
+      <label>Email</label>
+      <input type="email" id="spEmail" placeholder="Enter email" required />
+      
+      <label>Phone Number</label>
+      <input type="tel" id="spPhone" placeholder="Enter phone number" required />
+      
+      <label>Service Type</label>
+      <select id="spServiceType" required>
+        <option value="">-- Select Service Type --</option>
+        <option value="Electrician">Electrician</option>
+        <option value="Plumber">Plumber</option>
+        <option value="Cleaner">Cleaner</option>
+        <option value="Painter">Painter</option>
+        <option value="Carpenter">Carpenter</option>
+        <option value="AC Repair">AC Repair</option>
+      </select>
+      
+      <label>Experience (Years)</label>
+      <input type="number" id="spExperience" placeholder="Enter years of experience" required min="0" />
+      
+      <label>Service Area</label>
+      <input type="text" id="spArea" placeholder="e.g., Mumbai, Delhi" required />
+      
+      <label>Password</label>
+      <input type="password" id="spPassword" placeholder="Create password" required />
+      
+      <button type="submit" class="btn-primary">Sign Up</button>
+      <p>Already have an account? <a href="sp_login.html">Login</a></p>
+    </form>
+  </main>
+
+  <footer>
+    <p>© 2025 QuickServe. All rights reserved.</p>
+  </footer>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<!-- <script src="js/storage.js"></script> -->
+  <script src="js/storage.js"></script>
+  <script src="js/signup.js"></script>
+</body>
+</html>
